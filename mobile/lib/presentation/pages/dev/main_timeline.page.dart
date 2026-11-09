@@ -41,6 +41,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
   @override
   Widget build(BuildContext context) {
     final hasMemories = ref.watch(memoryLaneProvider.select((state) => state.value?.isNotEmpty ?? false));
+    final hasStories = ref.watch(storyAlbumsProvider.select((a) => a.isNotEmpty));
     return Timeline(
       topSliverWidget: SliverToBoxAdapter(
         child: Column(
@@ -51,7 +52,7 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
           ],
         ),
       ),
-      topSliverWidgetHeight: hasMemories ? 340 : 140,
+      topSliverWidgetHeight: (hasStories ? 198 : 0) + (hasMemories ? 200 : 0),
       showStorageIndicator: true,
     );
   }

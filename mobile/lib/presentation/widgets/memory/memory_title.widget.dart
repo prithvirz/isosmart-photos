@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 /// [asset] adds the age at that asset to birthday titles
 String getMemoryTitle(Translations t, Memory memory, {RemoteAsset? asset, bool preferDate = false}) =>
     switch (memory.type) {
+      MemoryTypeEnum.onThisDay when memory.data.personName?.isNotEmpty ?? false => memory.data.personName!,
       MemoryTypeEnum.onThisDay =>
         preferDate
             ? DateFormat.yMMMMd(resolvedDateTimeLocale()).format(memory.memoryAt)

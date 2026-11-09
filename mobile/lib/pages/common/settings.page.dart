@@ -72,6 +72,15 @@ enum SettingSection {
   const SettingSection(this.icon);
 }
 
+// Only what a normal user needs; the rest is hidden.
+const _userSections = [
+  SettingSection.backup,
+  SettingSection.freeUpSpace,
+  SettingSection.notifications,
+  SettingSection.preferences,
+  SettingSection.languages,
+];
+
 @RoutePage()
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -89,7 +98,7 @@ class _MobileLayout extends StatelessWidget {
   const _MobileLayout();
   @override
   Widget build(BuildContext context) {
-    final List<Widget> settings = SettingSection.values
+    final List<Widget> settings = _userSections
         .expand(
           (setting) => setting == SettingSection.beta
               ? [
@@ -110,14 +119,6 @@ class _MobileLayout extends StatelessWidget {
                 ],
         )
         .toList();
-    settings.add(
-      SettingsCard(
-        icon: Icons.auto_awesome_outlined,
-        title: context.t.whats_new,
-        subtitle: context.t.whats_new_settings_subtitle,
-        onTap: () => context.pushRoute(const WhatsNewRoute()),
-      ),
-    );
     return ListView(padding: const EdgeInsets.only(top: 10.0, bottom: 60), children: [...settings]);
   }
 }
@@ -126,7 +127,7 @@ class _TabletLayout extends HookWidget {
   const _TabletLayout();
   @override
   Widget build(BuildContext context) {
-    final selectedSection = useState<SettingSection>(SettingSection.values.first);
+    final selectedSection = useState<SettingSection>(_userSections.first);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.start,
@@ -135,7 +136,7 @@ class _TabletLayout extends HookWidget {
           flex: 2,
           child: CustomScrollView(
             slivers: [
-              ...SettingSection.values.map(
+              ..._userSections.map(
                 (s) => SliverToBoxAdapter(
                   child: ListTile(
                     title: Text(s.title(context.t)),
@@ -145,13 +146,6 @@ class _TabletLayout extends HookWidget {
                     selectedTileColor: context.themeData.highlightColor,
                     onTap: () => selectedSection.value = s,
                   ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: ListTile(
-                  title: Text(context.t.whats_new),
-                  leading: const Icon(Icons.auto_awesome_outlined),
-                  onTap: () => context.pushRoute(const WhatsNewRoute()),
                 ),
               ),
             ],
