@@ -55,7 +55,7 @@ jobs:
         env:
           KEYSTORE_B64: ${{ secrets.PHOTOS_KEYSTORE_B64 }}
         run: |
-          printf '%s' "$KEYSTORE_B64" | base64 -d > mobile/key.jks
+          printf '%s' "$KEYSTORE_B64" | base64 -d > mobile/android/key.jks
           echo "KEYSTORE_DECODED=true" >> $GITHUB_ENV
 
       - name: Build Android APK
