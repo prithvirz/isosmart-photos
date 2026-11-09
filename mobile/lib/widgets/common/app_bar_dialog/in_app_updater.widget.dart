@@ -53,6 +53,7 @@ class _InAppUpdaterDialogState extends State<InAppUpdaterDialog> {
   double _progress = 0.0;
   String? _newVersionName;
   String? _apkDownloadUrl;
+  String? _apkSha256;
   String? _errorMessage;
   String _statusMessage = 'Checking for updates...';
 
@@ -95,10 +96,13 @@ class _InAppUpdaterDialogState extends State<InAppUpdaterDialog> {
       final assets = (data['assets'] as List<dynamic>? ?? []);
 
       String? apkUrl;
+      String? apkSha;
       for (final asset in assets) {
         final name = asset['name'] as String? ?? '';
         if (name.endsWith('.apk')) {
           apkUrl = asset['browser_download_url'] as String?;
+          final digest = asset['digest'] as String? ?? '';
+          apkSha = digest.startsWith('sha256:') ? digest.substring(7) : null;
           break;
         }
       }
@@ -117,6 +121,7 @@ class _InAppUpdaterDialogState extends State<InAppUpdaterDialog> {
         _hasUpdate = isNewer;
         _newVersionName = tagName;
         _apkDownloadUrl = apkUrl;
+        _apkSha256 = apkSha;
         _statusMessage = isNewer
             ? 'New version available: $tagName\n(Current: $currentVersion)'
             : 'You are using the latest version ($currentVersion).';
