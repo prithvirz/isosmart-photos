@@ -112,6 +112,7 @@ void _onNavigationSelected(TabsRouter router, int index, WidgetRef ref) {
 
   if (index == kPhotoTabIndex) {
     ref.invalidate(memoryLaneProvider);
+    unawaited(ref.read(remoteAlbumProvider.notifier).refresh());
   }
 
   if (router.activeIndex != kSearchTabIndex && index == kSearchTabIndex) {
