@@ -4,7 +4,9 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:immich_mobile/domain/models/album/album.model.dart';
+import 'package:immich_mobile/domain/models/memory.model.dart';
 import 'package:immich_mobile/extensions/build_context_extensions.dart';
+import 'package:immich_mobile/presentation/pages/memory.page.dart';
 import 'package:immich_mobile/presentation/widgets/images/thumbnail.widget.dart';
 import 'package:immich_mobile/providers/haptic_feedback.provider.dart';
 import 'package:immich_mobile/providers/infrastructure/album.provider.dart';
@@ -23,9 +25,33 @@ class StoriesRow extends ConsumerWidget {
       return const SizedBox.shrink();
     }
 
-    void openStory(RemoteAlbum album) {
+    Future<void> openStory(RemoteAlbum album) async {
       ref.read(hapticFeedbackProvider.notifier).heavyImpact();
-      unawaited(context.router.push(RemoteAlbumRoute(album: album)));
+      final assets = await ref.read(remoteAlbumProvider.notifier).getAssets(album.id);
+      if (assets.isEmpty) {
+        if (context.mounted) {
+          unawaited(context.router.push(RemoteAlbumRoute(album: album)));
+        }
+        return;
+      }
+
+      final cleanTitle = album.name.replaceFirst(RegExp(r'^✨\s*'), '');
+      final storyMemory = Memory(
+        id: album.id,
+        createdAt: album.createdAt,
+        updatedAt: album.updatedAt,
+        ownerId: album.ownerId,
+        type: MemoryTypeEnum.onThisDay,
+        data: MemoryData(year: album.createdAt.year, personName: cleanTitle),
+        isSaved: true,
+        memoryAt: album.createdAt,
+        assets: assets,
+      );
+
+      MemoryPage.setMemory(ref, storyMemory);
+      if (context.mounted) {
+        unawaited(context.pushRoute(MemoryRoute(memories: [storyMemory], memoryIndex: 0)));
+      }
     }
 
     return Container(
@@ -59,7 +85,6 @@ class StoriesRow extends ConsumerWidget {
               itemCount: storyAlbums.length,
               itemBuilder: (context, index) {
                 final album = storyAlbums[index];
-                // Clean display name: remove '✨ ' prefix
                 final cleanTitle = album.name.replaceFirst(RegExp(r'^✨\s*'), '');
 
                 return Container(
@@ -67,11 +92,10 @@ class StoriesRow extends ConsumerWidget {
                   margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(16),
-                    onTap: () => openStory(album),
+                    onTap: () => unawaited(openStory(album)),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        // Card circular/rounded thumbnail
                         Container(
                           width: 76,
                           height: 76,
@@ -94,7 +118,6 @@ class StoriesRow extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 6),
-                        // Album title
                         Text(
                           cleanTitle,
                           maxLines: 1,
