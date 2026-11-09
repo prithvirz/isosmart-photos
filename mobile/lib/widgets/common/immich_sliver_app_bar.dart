@@ -88,13 +88,28 @@ class _ImmichLogoWithText extends StatelessWidget {
   const _ImmichLogoWithText();
 
   @override
-  Widget build(BuildContext context) => AnimatedOpacity(
-    opacity: IconTheme.of(context).opacity ?? 1,
-    duration: kThemeChangeDuration,
-    child: SvgPicture.asset(
-      context.isDarkTheme ? 'assets/immich-logo-inline-dark.svg' : 'assets/immich-logo-inline-light.svg',
-      height: 40,
-    ),
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(
+        'Isosmart ',
+        style: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.5,
+          color: context.isDarkTheme ? Colors.white : Colors.black87,
+        ),
+      ),
+      Text(
+        'Photos',
+        style: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w400,
+          letterSpacing: -0.5,
+          color: context.primaryColor,
+        ),
+      ),
+    ],
   );
 }
 

@@ -8,11 +8,29 @@ class ImmichTitleText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Image(
-      image: AssetImage(context.isDarkTheme ? 'assets/immich-text-dark.png' : 'assets/immich-text-light.png'),
-      width: fontSize * 4,
-      filterQuality: FilterQuality.high,
-      color: context.primaryColor,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          'Isosmart ',
+          style: TextStyle(
+            fontSize: fontSize * 0.7,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+            color: context.isDarkTheme ? Colors.white : Colors.black87,
+          ),
+        ),
+        Text(
+          'Photos',
+          style: TextStyle(
+            fontSize: fontSize * 0.7,
+            fontWeight: FontWeight.w400,
+            letterSpacing: -0.5,
+            color: context.primaryColor,
+          ),
+        ),
+      ],
     );
   }
 }
