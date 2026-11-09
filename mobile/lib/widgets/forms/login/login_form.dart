@@ -163,12 +163,9 @@ class LoginForm extends HookConsumerWidget {
     }
 
     useEffect(() {
-      final serverUrl = getServerUrl();
-      if (serverUrl != null && serverUrl.isNotEmpty) {
-        serverEndpointController.text = serverUrl;
-      } else {
-        serverEndpointController.text = 'https://photos.isosmart.online';
-      }
+      // Fixed address: the user only types email and password.
+      serverEndpointController.text = 'https://photos.isosmart.online';
+      WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(getServerAuthSettings()));
       return null;
     }, []);
 
@@ -450,26 +447,14 @@ class LoginForm extends HookConsumerWidget {
         ? Padding(
             padding: const EdgeInsets.only(top: ImmichSpacing.md),
             child: Column(
-              mainAxisSize: MainAxisSize.max,
               children: [
-                ImmichForm(
-                  onSubmit: getServerAuthSettings,
-                  submitText: context.t.next,
-                  submitIcon: Icons.arrow_forward_rounded,
-                  builder: (_, form) => ImmichURLInput(
-                    controller: serverEndpointController,
-                    label: context.t.login_form_endpoint_url,
-                    hintText: context.t.login_form_endpoint_hint,
-                    validator: _validateUrl,
-                    keyboardAction: .next,
-                    onSubmit: (_) => form.submit(),
-                  ),
-                ),
+                const Center(child: CircularProgressIndicator()),
+                const SizedBox(height: 12),
                 ImmichTextButton(
-                  labelText: context.t.settings,
-                  icon: Icons.settings,
+                  labelText: 'Retry',
+                  icon: Icons.refresh,
                   variant: ImmichVariant.ghost,
-                  onPressed: () => context.pushRoute(const SettingsRoute()),
+                  onPressed: getServerAuthSettings,
                 ),
               ],
             ),
@@ -480,14 +465,6 @@ class LoginForm extends HookConsumerWidget {
               mainAxisSize: MainAxisSize.max,
               children: [
                 buildVersionCompatWarning(),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: ImmichSpacing.md),
-                  child: Text(
-                    normalizeServerUrl(serverEndpointController.text),
-                    style: context.textTheme.displaySmall,
-                    textAlign: TextAlign.center,
-                  ),
-                ),
                 if (isPasswordLoginEnable.value)
                   ImmichForm(
                     onSubmit: login,
@@ -528,12 +505,6 @@ class LoginForm extends HookConsumerWidget {
                         : const SizedBox.shrink(),
                   ),
                 if (!isOauthEnable.value && !isPasswordLoginEnable.value) Center(child: Text(context.t.login_disabled)),
-                ImmichTextButton(
-                  labelText: context.t.back,
-                  icon: Icons.arrow_back,
-                  variant: ImmichVariant.ghost,
-                  onPressed: () => serverEndpoint.value = null,
-                ),
               ],
             ),
           );

@@ -11,6 +11,8 @@ import 'package:immich_mobile/models/auth/auth_state.model.dart';
 import 'package:immich_mobile/models/auth/login_response.model.dart';
 import 'package:immich_mobile/providers/api.provider.dart';
 import 'package:immich_mobile/providers/infrastructure/settings.provider.dart';
+import 'package:immich_mobile/providers/network.provider.dart';
+import 'package:immich_mobile/infrastructure/repositories/network.repository.dart';
 import 'package:immich_mobile/providers/infrastructure/user.provider.dart';
 import 'package:immich_mobile/services/api.service.dart';
 import 'package:immich_mobile/services/auth.service.dart';
@@ -174,7 +176,40 @@ class AuthNotifier extends StateNotifier<AuthState> {
       isAdmin: user.isAdmin,
     );
 
+    await _setupHomeNetwork();
+
     return true;
+  }
+
+  static const _directUrl = 'https://photos-direct.isosmart.online';
+  static const _lanUrl = 'http://192.168.31.130:2283';
+
+  /// Sign-in goes through photos.isosmart.online (login is blocked on photos-direct). Afterwards use photos-direct
+  /// (no 100 MB limit) and, at home, the LAN address.
+  Future<void> _setupHomeNetwork() async {
+    try {
+      final settings = _ref.read(settingsProvider);
+      final net = _ref.read(appConfigProvider).network;
+      if (net.externalEndpointList.isEmpty) {
+        await settings.write(.networkExternalEndpointList, [_directUrl]);
+        await settings.write(.networkAutoEndpointSwitching, true);
+      }
+      if (net.localEndpoint == null || net.localEndpoint!.isEmpty) {
+        try {
+          final res = await NetworkRepository.client.get(Uri.parse('$_lanUrl/api/server/ping')).timeout(const Duration(seconds: 2));
+          final wifi = res.statusCode == 200 ? await _ref.read(networkProvider.notifier).getWifiName() : null;
+          if (wifi != null && wifi.isNotEmpty) {
+            await settings.write(.networkPreferredWifiName, wifi);
+            await settings.write(.networkLocalEndpoint, _lanUrl);
+          }
+        } catch (_) {} // not at home
+      }
+      // the http client only sends the token to known addresses, so refresh before switching
+      await _apiService.updateHeaders();
+      await _authService.setOpenApiServiceEndpoint();
+    } catch (e, s) {
+      _log.warning('Home network setup failed', e, s);
+    }
   }
 
   Future<void> saveWifiName(String wifiName) async {
