@@ -174,14 +174,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
       isAdmin: user.isAdmin,
     );
 
-    // Login goes through photos.isosmart.online (100 MB limit); switch to the direct relay after sign-in so big uploads work.
-    if (_ref.read(appConfigProvider).network.externalEndpointList.isEmpty) {
-      final settings = _ref.read(settingsProvider);
-      await settings.write(.networkExternalEndpointList, ['https://photos-direct.isosmart.online']);
-      await settings.write(.networkAutoEndpointSwitching, true);
-      await _authService.setOpenApiServiceEndpoint();
-    }
-
     return true;
   }
 

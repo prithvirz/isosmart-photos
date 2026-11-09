@@ -78,6 +78,7 @@ const _userSections = [
   SettingSection.freeUpSpace,
   SettingSection.notifications,
   SettingSection.preferences,
+  SettingSection.networking,
   SettingSection.languages,
 ];
 
