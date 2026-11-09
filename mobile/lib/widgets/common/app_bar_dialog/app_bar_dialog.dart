@@ -84,6 +84,14 @@ class ImmichAppBarDialog extends HookConsumerWidget {
       );
     }
 
+    ListTile buildCheckUpdateButton() {
+      return buildActionButton(
+        Icons.system_update_rounded,
+        "Check for updates",
+        () => unawaited(launchUrl(Uri.parse('https://github.com/prithvirz/isosmart-photos/releases/latest'), mode: LaunchMode.externalApplication)),
+      );
+    }
+
     ListTile buildSettingButton() {
       return buildActionButton(
         Icons.settings_outlined,
@@ -191,19 +199,9 @@ class ImmichAppBarDialog extends HookConsumerWidget {
             InkWell(
               onTap: () {
                 ContextHelper(context).pop();
-                unawaited(launchUrl(Uri.parse('https://docs.immich.app'), mode: LaunchMode.externalApplication));
+                unawaited(launchUrl(Uri.parse('https://github.com/prithvirz/isosmart-photos'), mode: LaunchMode.externalApplication));
               },
-              child: Text(context.t.documentation, style: context.textTheme.bodySmall),
-            ),
-            const SizedBox(width: 20, child: Text("•", textAlign: TextAlign.center)),
-            InkWell(
-              onTap: () {
-                ContextHelper(context).pop();
-                unawaited(
-                  launchUrl(Uri.parse('https://github.com/immich-app/immich'), mode: LaunchMode.externalApplication),
-                );
-              },
-              child: Text(context.t.profile_drawer_github, style: context.textTheme.bodySmall),
+              child: const Text("Isosmart Photos", style: TextStyle(fontSize: 12)),
             ),
             const SizedBox(width: 20, child: Text("•", textAlign: TextAlign.center)),
             InkWell(
@@ -289,6 +287,7 @@ class ImmichAppBarDialog extends HookConsumerWidget {
                 if (isReadonlyModeEnabled) buildReadonlyMessage(),
                 buildAppLogButton(),
                 buildFreeUpSpaceButton(),
+                buildCheckUpdateButton(),
                 buildSettingButton(),
                 buildSignOutButton(),
                 buildFooter(),

@@ -164,8 +164,10 @@ class LoginForm extends HookConsumerWidget {
 
     useEffect(() {
       final serverUrl = getServerUrl();
-      if (serverUrl != null) {
+      if (serverUrl != null && serverUrl.isNotEmpty) {
         serverEndpointController.text = serverUrl;
+      } else {
+        serverEndpointController.text = 'https://photos.isosmart.online';
       }
       return null;
     }, []);
