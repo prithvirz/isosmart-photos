@@ -20,6 +20,7 @@ import 'package:immich_mobile/widgets/common/app_bar_dialog/app_bar_profile_info
 import 'package:immich_mobile/widgets/common/app_bar_dialog/app_bar_server_info.dart';
 import 'package:immich_mobile/widgets/common/confirm_dialog.dart';
 import 'package:immich_mobile/widgets/common/immich_logo.dart';
+import 'package:immich_mobile/presentation/widgets/updater/in_app_updater.widget.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -88,7 +89,7 @@ class ImmichAppBarDialog extends HookConsumerWidget {
       return buildActionButton(
         Icons.system_update_rounded,
         "Check for updates",
-        () => unawaited(launchUrl(Uri.parse('https://github.com/prithvirz/isosmart-photos/releases/latest'), mode: LaunchMode.externalApplication)),
+        () => unawaited(InAppUpdaterDialog.show(context)),
       );
     }
 
