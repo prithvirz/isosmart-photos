@@ -111,3 +111,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release upload "$GITHUB_REF_NAME" release-apk/isosmart-photos-*.apk --clobber || gh release create "$GITHUB_REF_NAME" release-apk/isosmart-photos-*.apk --title "Isosmart Photos ${GITHUB_REF_NAME#v}" --generate-notes
+
+  notify:
+    needs: [build, release]
+    if: always() && (startsWith(github.ref, 'refs/heads/sync/') || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          TG_TOKEN: ${{ secrets.TG_ALERT_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TG_ALERT_CHAT_ID }}
+        run: |
+          curl -s -m 20 "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "text=Isosmart Photos ${GITHUB_REF_NAME}: build ${{ needs.build.result }}, release ${{ needs.release.result }}" >/dev/null || true

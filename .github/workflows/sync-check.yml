@@ -2,47 +2,69 @@ name: Check Upstream Immich
 
 on:
   schedule:
-    - cron: '0 4 * * *' # Daily at 04:00 UTC (09:30 AM IST)
+    - cron: '0 4 * * *' # daily 04:00 UTC = 09:30 IST
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Test only: pretend this upstream tag is the latest (e.g. v3.4.0-rc.3)'
+        required: false
 
 permissions:
-  contents: read
+  contents: write
+  actions: write
 
 jobs:
-  check-version:
+  sync:
     runs-on: ubuntu-latest
+    env:
+      TG_TOKEN: ${{ secrets.TG_ALERT_BOT_TOKEN }}
+      TG_CHAT: ${{ secrets.TG_ALERT_CHAT_ID }}
+      GH_TOKEN: ${{ github.token }}
+      FORCE: ${{ inputs.version }}
     steps:
-      - name: Query Server Immich Version
-        id: server
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Compare, merge, build
         run: |
-          SERVER_RES=$(curl -s --fail https://photos.isosmart.online/api/server/version || echo "")
-          if [ -z "$SERVER_RES" ]; then
-            echo "::warning::Could not contact homeserver Immich version endpoint"
+          tg() { curl -s -m 20 "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" --data-urlencode "chat_id=${TG_CHAT}" --data-urlencode "text=$1" >/dev/null || true; }
+          U=${FORCE:-$(curl -s --fail -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/immich-app/immich/releases/latest | jq -r .tag_name)}
+          B=v$(sed -nE 's/^version: *([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' mobile/pubspec.yaml)
+          S=v$(curl -s --fail https://photos.isosmart.online/api/server/version | jq -r '"\(.major).\(.minor).\(.patch)"' 2>/dev/null || echo unknown)
+          echo "upstream=$U app-base=$B server=$S"
+          if [ -z "$U" ] || [ "$U" = null ]; then echo "::warning::could not read upstream version"; exit 0; fi
+          if [ "$(printf '%s\n' "$B" "$U" | sort -V | tail -1)" = "$B" ]; then echo "App is up to date."; exit 0; fi
+
+          if git ls-remote --exit-code origin "refs/heads/sync/$U" >/dev/null 2>&1; then
+            # already merged earlier; remind once when the server catches up
+            if [ "$S" = "$U" ] && ! git ls-remote --exit-code origin "refs/tags/server-ready-$U" >/dev/null 2>&1; then
+              tg "Isosmart Photos: your server now runs Immich $U. The app build for it is ready (branch sync/$U). Tell the assistant: release it."
+              git tag "server-ready-$U" && git push -q origin "refs/tags/server-ready-$U"
+            fi
             exit 0
           fi
-          MAJOR=$(echo "$SERVER_RES" | jq -r '.major')
-          MINOR=$(echo "$SERVER_RES" | jq -r '.minor')
-          PATCH=$(echo "$SERVER_RES" | jq -r '.patch')
-          SERVER_VER="$MAJOR.$MINOR.$PATCH"
-          echo "Server version is $SERVER_VER"
-          echo "version=$SERVER_VER" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code origin "refs/tags/sync-conflict-$U" >/dev/null 2>&1; then exit 0; fi
 
-      - name: Query Upstream Latest Release
-        id: upstream
-        run: |
-          LATEST=$(gh release list -R immich-app/immich --exclude-pre-releases -L 1 --json tagName --jq '.[0].tagName')
-          echo "Upstream latest stable: $LATEST"
-          echo "latest=${LATEST#v}" >> "$GITHUB_OUTPUT"
-        env:
-          GH_TOKEN: ${{ github.token }}
-
-      - name: Compare Gate
-        run: |
-          SERVER="${{ steps.server.outputs.version }}"
-          UPSTREAM="${{ steps.upstream.outputs.latest }}"
-          echo "Server: $SERVER | Upstream: $UPSTREAM"
-          if [ "$SERVER" = "$UPSTREAM" ]; then
-            echo "Server and upstream in lockstep: OK to track."
+          git config user.name "isosmart-sync"
+          git config user.email "sync@isosmart.online"
+          git remote add upstream https://github.com/immich-app/immich.git
+          git fetch -q --no-tags upstream "refs/tags/$U:refs/tags/upstream-$U"
+          git checkout -q -b "sync/$U"
+          if git merge --no-commit --no-ff "upstream-$U" >/dev/null 2>&1; then
+            # keep our own workflows (the token may not edit workflow files)
+            for f in $(git diff --cached --name-only HEAD -- .github); do
+              if git cat-file -e "HEAD:$f" 2>/dev/null; then git checkout -q HEAD -- "$f"; else git rm -qf "$f"; fi
+            done
+            git commit -qm "Merge upstream $U"
+            git push -q origin "refs/heads/sync/$U"
+            gh workflow run app.yml --ref "sync/$U"
+            tg "Immich $U is out. Your server runs $S, app was based on $B. The new code merged cleanly into branch sync/$U and a test build is running (you get another message when it finishes). Upgrade the server to $U first, then tell the assistant: release it."
           else
-            echo "Server lags upstream or requires server upgrade first. Release skipped."
+            files=$(git diff --name-only --diff-filter=U | head -8 | tr '\n' ' ')
+            git merge --abort || true
+            git checkout -q main
+            git tag "sync-conflict-$U" && git push -q origin "refs/tags/sync-conflict-$U"
+            tg "Immich $U is out (server $S, app base $B). Merging it into the app hit conflicts in: $files. Needs a manual merge; tell the assistant."
           fi
