@@ -62,6 +62,16 @@ class _InAppUpdaterDialogState extends State<InAppUpdaterDialog> {
     _checkForUpdate();
   }
 
+  static bool _isNewer(String a, String b) {
+    List<int> n(String s) => RegExp(r'\d+').allMatches(s).map((m) => int.parse(m[0]!)).toList();
+    final x = n(a), y = n(b);
+    for (var i = 0; i < x.length || i < y.length; i++) {
+      final p = i < x.length ? x[i] : 0, q = i < y.length ? y[i] : 0;
+      if (p != q) return p > q;
+    }
+    return false;
+  }
+
   Future<void> _checkForUpdate() async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
@@ -101,7 +111,7 @@ class _InAppUpdaterDialogState extends State<InAppUpdaterDialog> {
         return;
       }
 
-      final isNewer = tagName != currentVersion;
+      final isNewer = _isNewer(tagName, currentVersion);
       setState(() {
         _loading = false;
         _hasUpdate = isNewer;
@@ -171,7 +181,7 @@ class _InAppUpdaterDialogState extends State<InAppUpdaterDialog> {
         _statusMessage = 'Starting installation...';
       });
 
-      await NativeUpdater.installApk(apkFile.path);
+      await NativeUpdater.installApk(apkFile.path, _apkSha256);
       if (mounted) {
         Navigator.of(context).pop();
       }
