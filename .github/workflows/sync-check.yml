@@ -50,9 +50,21 @@ jobs:
           git config user.name "isosmart-sync"
           git config user.email "sync@isosmart.online"
           git remote add upstream https://github.com/immich-app/immich.git
-          git fetch -q --no-tags upstream "refs/tags/$U:refs/tags/upstream-$U"
+          git fetch -q --no-tags upstream "refs/tags/$U:refs/tags/upstream-$U" "refs/tags/$B:refs/tags/upstream-$B"
+          git diff --name-only "upstream-$B" HEAD > /tmp/ours.txt   # files this app changed
           git checkout -q -b "sync/$U"
-          if git merge --no-commit --no-ff "upstream-$U" >/dev/null 2>&1; then
+          git merge --no-commit --no-ff "upstream-$U" >/dev/null 2>&1 || true
+          real=""
+          for f in $(git diff --name-only --diff-filter=U); do
+            case "$f" in
+              .github/*) # our own workflows win
+                if git cat-file -e "HEAD:$f" 2>/dev/null; then git checkout -q --ours -- "$f" && git add "$f"; else git rm -qf "$f"; fi ;;
+              *) if grep -qxF "$f" /tmp/ours.txt; then real="$real $f"
+                 elif git cat-file -e "upstream-$U:$f" 2>/dev/null; then git checkout -q --theirs -- "$f" && git add "$f"
+                 else git rm -qf "$f"; fi ;;
+            esac
+          done
+          if [ -z "$real" ]; then
             # keep our own workflows (the token may not edit workflow files)
             for f in $(git diff --cached --name-only HEAD -- .github); do
               if git cat-file -e "HEAD:$f" 2>/dev/null; then git checkout -q HEAD -- "$f"; else git rm -qf "$f"; fi
@@ -62,7 +74,7 @@ jobs:
             gh workflow run app.yml --ref "sync/$U"
             tg "Immich $U is out. Your server runs $S, app was based on $B. The new code merged cleanly into branch sync/$U and a test build is running (you get another message when it finishes). Upgrade the server to $U first, then tell the assistant: release it."
           else
-            files=$(git diff --name-only --diff-filter=U | head -8 | tr '\n' ' ')
+            files=$(echo $real | cut -c1-300)
             git merge --abort || true
             git checkout -q main
             git tag "sync-conflict-$U" && git push -q origin "refs/tags/sync-conflict-$U"
