@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -10,17 +12,26 @@ import 'package:immich_mobile/presentation/widgets/images/thumbnail.widget.dart'
 import 'package:immich_mobile/providers/haptic_feedback.provider.dart';
 import 'package:immich_mobile/providers/infrastructure/album.provider.dart';
 import 'package:immich_mobile/routing/router.dart';
+import 'package:path_provider/path_provider.dart';
 
 final _storyPrefix = RegExp(r'^\u2728\s*');
 
-/// Story albums made nightly by the home server (names start with the sparkle).
-final storyAlbumsProvider = Provider<List<RemoteAlbum>>(
-  (ref) => ref
+String _storyKey(RemoteAlbum a) => '${a.id}@${a.updatedAt.millisecondsSinceEpoch}';
+
+/// Stories already opened on this phone (kept in a small file).
+final seenStoriesProvider = StateProvider<Set<String>>((ref) => <String>{});
+
+Future<File> _seenFile() async => File('${(await getApplicationSupportDirectory()).path}/seen_stories.json');
+
+/// Story albums made nightly by the home server (names start with the sparkle), minus the ones already watched.
+final storyAlbumsProvider = Provider<List<RemoteAlbum>>((ref) {
+  final seen = ref.watch(seenStoriesProvider);
+  return ref
       .watch(remoteAlbumProvider)
       .albums
-      .where((a) => _storyPrefix.hasMatch(a.name) && a.assetCount > 0)
-      .toList(),
-);
+      .where((a) => _storyPrefix.hasMatch(a.name) && a.assetCount > 0 && !seen.contains(_storyKey(a)))
+      .toList();
+});
 
 class StoriesRow extends ConsumerStatefulWidget {
   const StoriesRow({super.key});
@@ -35,8 +46,29 @@ class _StoriesRowState extends ConsumerState<StoriesRow> {
     super.initState();
     // Load albums on the timeline itself, not only after the Albums tab is opened.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) unawaited(ref.read(remoteAlbumProvider.notifier).refresh());
+      if (!mounted) return;
+      unawaited(ref.read(remoteAlbumProvider.notifier).refresh());
+      unawaited(_loadSeen());
     });
+  }
+
+  Future<void> _loadSeen() async {
+    try {
+      final f = await _seenFile();
+      if (!f.existsSync()) return;
+      final saved = (jsonDecode(f.readAsStringSync()) as List).cast<String>();
+      if (mounted) ref.read(seenStoriesProvider.notifier).state = {...ref.read(seenStoriesProvider), ...saved};
+    } catch (_) {}
+  }
+
+  Future<void> _markSeen(RemoteAlbum album) async {
+    final next = {...ref.read(seenStoriesProvider), _storyKey(album)};
+    ref.read(seenStoriesProvider.notifier).state = next;
+    try {
+      // keep the last 200 only
+      final list = next.toList();
+      (await _seenFile()).writeAsStringSync(jsonEncode(list.length > 200 ? list.sublist(list.length - 200) : list));
+    } catch (_) {}
   }
 
   Future<void> _open(RemoteAlbum album) async {
@@ -59,6 +91,7 @@ class _StoriesRowState extends ConsumerState<StoriesRow> {
       assets: assets,
     );
     MemoryPage.setMemory(ref, memory);
+    unawaited(_markSeen(album));
     unawaited(context.pushRoute(MemoryRoute(memories: [memory], memoryIndex: 0)));
   }
 

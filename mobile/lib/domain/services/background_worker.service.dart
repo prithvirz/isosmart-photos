@@ -10,6 +10,7 @@ import 'package:immich_mobile/data/store.dart';
 import 'package:immich_mobile/domain/services/hash.service.dart';
 import 'package:immich_mobile/domain/services/local_sync.service.dart';
 import 'package:immich_mobile/domain/services/log.service.dart';
+import 'package:immich_mobile/domain/services/memory_notification.service.dart';
 import 'package:immich_mobile/domain/services/sync_stream.service.dart';
 // ignore: library_prefixes
 import 'package:immich_mobile/entities/store.entity.dart' as dbStore;
@@ -127,6 +128,7 @@ class BackgroundWorkerBgService extends BackgroundWorkerFlutterApi {
     final hashTimeout = Duration(minutes: _isBackupEnabled ? 3 : 6);
     final backupTimeout = maxMinutes != null ? Duration(minutes: maxMinutes - 1) : null;
     await _optimizeDB();
+    if (_ref != null) await showDailyMemoryNotification(_ref!);
     return _backgroundLoop(
       hashTimeout: hashTimeout,
       backupTimeout: backupTimeout,
