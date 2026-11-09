@@ -1,0 +1,112 @@
+name: App
+
+on:
+  push:
+    branches: [main, main-v3.3.6]
+    tags: ['v*']
+    paths-ignore: ['**.md']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: app-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+env:
+  FLUTTER_VERSION: '3.47.9'
+  RELEASE_CERT_SHA256: bf1e1ddab512246b20e353462c27302e30b3e8c5155d9f28c92420652cc2c629
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    outputs:
+      version: ${{ steps.build.outputs.version }}
+      build: ${{ steps.build.outputs.build }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Setup Mise & Tools
+        uses: jdx/mise-action@v2
+        with:
+          cache: true
+
+      - name: Install dependencies and Codegen
+        run: |
+          mise //mobile:install:ci
+          mise //mobile:codegen
+
+      - name: Decode Keystore
+        if: github.event_name != 'pull_request'
+        env:
+          KEYSTORE_B64: ${{ secrets.PHOTOS_KEYSTORE_B64 }}
+        run: |
+          printf '%s' "$KEYSTORE_B64" | base64 -d > mobile/key.jks
+          echo "KEYSTORE_DECODED=true" >> $GITHUB_ENV
+
+      - name: Build Android APK
+        id: build
+        working-directory: mobile
+        env:
+          PHOTOS_STORE_PASSWORD: ${{ secrets.PHOTOS_STORE_PASSWORD }}
+          PHOTOS_KEY_PASSWORD: ${{ secrets.PHOTOS_KEY_PASSWORD }}
+          PHOTOS_KEY_ALIAS: ${{ secrets.PHOTOS_KEY_ALIAS }}
+        run: |
+          version=$(sed -nE 's/^version: *([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' pubspec.yaml)
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="${version}-iso.${GITHUB_RUN_NUMBER}"
+          fi
+          build=${{ github.run_number }}
+
+          flutter build apk --release --target-platform android-arm,android-arm64 --build-name="$version" --build-number="$build"
+          cp build/app/outputs/flutter-apk/app-release.apk "isosmart-photos-$version.apk"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+
+      - name: Verify Signature
+        if: github.event_name != 'pull_request'
+        working-directory: mobile
+        run: |
+          apksigner=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner
+          "$apksigner" verify --print-certs isosmart-photos-*.apk | tee certs.txt
+          grep -qi "certificate SHA-256 digest: $RELEASE_CERT_SHA256" certs.txt || { echo "::error::not signed with release key"; exit 1; }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: mobile/isosmart-photos-*.apk
+          retention-days: 14
+
+  release:
+    needs: [build]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: apk
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" mobile/isosmart-photos-*.apk --title "Isosmart Photos ${GITHUB_REF_NAME#v}" --generate-notes

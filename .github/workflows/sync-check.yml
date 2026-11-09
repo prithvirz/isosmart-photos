@@ -1,0 +1,48 @@
+name: Check Upstream Immich
+
+on:
+  schedule:
+    - cron: '0 4 * * *' # Daily at 04:00 UTC (09:30 AM IST)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query Server Immich Version
+        id: server
+        run: |
+          SERVER_RES=$(curl -s --fail https://photos.isosmart.online/api/server/version || echo "")
+          if [ -z "$SERVER_RES" ]; then
+            echo "::warning::Could not contact homeserver Immich version endpoint"
+            exit 0
+          fi
+          MAJOR=$(echo "$SERVER_RES" | jq -r '.major')
+          MINOR=$(echo "$SERVER_RES" | jq -r '.minor')
+          PATCH=$(echo "$SERVER_RES" | jq -r '.patch')
+          SERVER_VER="$MAJOR.$MINOR.$PATCH"
+          echo "Server version is $SERVER_VER"
+          echo "version=$SERVER_VER" >> "$GITHUB_OUTPUT"
+
+      - name: Query Upstream Latest Release
+        id: upstream
+        run: |
+          LATEST=$(gh release list -R immich-app/immich --exclude-pre-releases -L 1 --json tagName --jq '.[0].tagName')
+          echo "Upstream latest stable: $LATEST"
+          echo "latest=${LATEST#v}" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Compare Gate
+        run: |
+          SERVER="${{ steps.server.outputs.version }}"
+          UPSTREAM="${{ steps.upstream.outputs.latest }}"
+          echo "Server: $SERVER | Upstream: $UPSTREAM"
+          if [ "$SERVER" = "$UPSTREAM" ]; then
+            echo "Server and upstream in lockstep: OK to track."
+          else
+            echo "Server lags upstream or requires server upgrade first. Release skipped."
+          fi

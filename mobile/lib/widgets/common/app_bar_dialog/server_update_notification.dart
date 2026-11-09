@@ -22,20 +22,8 @@ class ServerUpdateNotification extends HookConsumerWidget {
         ? context.primaryColor.withAlpha(55)
         : context.primaryColor.withAlpha(25);
     Future<void> openUpdateLink() {
-      String url;
-      if (serverInfoState.versionStatus == VersionStatus.serverOutOfDate) {
-        url = kImmichLatestRelease;
-      } else {
-        if (Platform.isIOS) {
-          url = kImmichAppStoreLink;
-        } else if (Platform.isAndroid) {
-          url = kImmichPlayStoreLink;
-        } else {
-          // Fallback to latest release for other/unknown platforms
-          url = kImmichLatestRelease;
-        }
-      }
-
+      // In Isosmart Photos, check updates through homeserver or direct release
+      const url = "https://photos.isosmart.online";
       return launchUrlString(url, mode: LaunchMode.externalApplication);
     }
 
