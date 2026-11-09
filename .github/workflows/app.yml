@@ -105,8 +105,9 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: apk
+          path: release-apk
       - name: GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" mobile/isosmart-photos-*.apk --title "Isosmart Photos ${GITHUB_REF_NAME#v}" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" release-apk/isosmart-photos-*.apk --clobber || gh release create "$GITHUB_REF_NAME" release-apk/isosmart-photos-*.apk --title "Isosmart Photos ${GITHUB_REF_NAME#v}" --generate-notes
