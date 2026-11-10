@@ -24,6 +24,8 @@ import app.alextran.immich.images.LocalImageApi
 import app.alextran.immich.images.LocalImagesImpl
 import app.alextran.immich.images.RemoteImageApi
 import app.alextran.immich.images.RemoteImagesImpl
+import app.alextran.immich.passkey.PasskeyPlugin
+import app.alextran.immich.passkey.PasskeyPlugin
 import app.alextran.immich.permission.PermissionApi
 import app.alextran.immich.permission.PermissionApiImpl
 import app.alextran.immich.sync.NativeSyncApi
@@ -42,9 +44,10 @@ class MainActivity : FlutterFragmentActivity() {
   private val io = Executors.newSingleThreadExecutor()
   private lateinit var updateChannel: MethodChannel
 
-  override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
     super.configureFlutterEngine(flutterEngine)
     registerPlugins(this, flutterEngine)
+    flutterEngine.plugins.add(PasskeyPlugin())
+<<<<<<< HEAD
 
     updateChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "online.isosmart.photos/native")
     updateChannel.setMethodCallHandler { call, result ->
