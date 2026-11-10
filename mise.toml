@@ -86,7 +86,7 @@ sources = [
   "bin/generate-dart-sdk.sh",
 ]
 outputs = ["../mobile/generated/openapi/"]
-run = "bash ./bin/generate-dart-sdk.sh"
+run = "echo skip open-api-dart"
 
 [tasks.open-api]
 run = [

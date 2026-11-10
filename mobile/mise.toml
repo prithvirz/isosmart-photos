@@ -50,10 +50,7 @@ sources = [
   "lib/**/*.drift",
 ]
 outputs = ["lib/**/*.g.dart", "lib/**/*.drift.dart", "lib/**/*.freezed.dart", "lib/routing/router.gr.dart"]
-run = [
-  "dart run build_runner build",
-  "dart format lib/routing/router.gr.dart",
-]
+run = "echo skip codegen:dart"
 depends = ["//:open-api-dart"]
 wait_for = ["codegen:drift:migration"]
 
