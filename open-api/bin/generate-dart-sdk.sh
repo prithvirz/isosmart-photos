@@ -13,7 +13,7 @@ patch --no-backup-if-mismatch -u "$TEMPLATE_DIR/serialization/native/native_clas
 
 rm -rf ../mobile/generated/openapi
 
-openapi-generator-cli generate -g dart -i ./immich-openapi-specs.json -o ../mobile/generated/openapi -t "$TEMPLATE_DIR" --additional-properties=useOptional=true
+openapi-generator-cli generate -g dart -i ./immich-openapi-specs.json -o ../mobile/generated/openapi -t "$TEMPLATE_DIR" --additional-properties=useOptional=true --skip-validate-spec
 
 # Post generate patches
 patch --no-backup-if-mismatch -u ../mobile/generated/openapi/lib/api_client.dart <./patch/api_client.dart.patch
@@ -25,3 +25,4 @@ patch --no-backup-if-mismatch -u ../mobile/generated/openapi/lib/model/passkey_a
 # Don't include analysis_options.yaml for the generated openapi files
 # so that language servers can properly exclude the mobile/generated/openapi directory
 rm ../mobile/generated/openapi/analysis_options.yaml
+
