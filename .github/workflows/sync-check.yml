@@ -35,8 +35,6 @@ jobs:
           S=v$(curl -s --fail https://photos.isosmart.online/api/server/version | jq -r '"\(.major).\(.minor).\(.patch)"' 2>/dev/null || echo unknown)
           echo "upstream=$U app-base=$B server=$S"
           if [ -z "$U" ] || [ "$U" = null ]; then echo "::warning::could not read upstream version"; exit 0; fi
-          if [ "$(printf '%s\n' "$B" "$U" | sort -V | tail -1)" = "$B" ]; then echo "App is up to date."; exit 0; fi
-
           if git ls-remote --exit-code origin "refs/heads/sync/$U" >/dev/null 2>&1; then
             if [ "$S" = "$U" ] && ! gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --jq '.[].tag_name' | grep -Eq "^v$U-iso\\."; then
               gh workflow run app.yml --ref "sync/$U"
@@ -44,6 +42,8 @@ jobs:
             fi
             exit 0
           fi
+
+          if [ "$(printf '%s\n' "$B" "$U" | sort -V | tail -1)" = "$B" ]; then echo "App is up to date."; exit 0; fi
           if git ls-remote --exit-code origin "refs/tags/sync-conflict-$U" >/dev/null 2>&1; then exit 0; fi
 
           git config user.name "isosmart-sync"
