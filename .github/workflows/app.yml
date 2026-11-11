@@ -25,6 +25,8 @@ jobs:
     outputs:
       version: ${{ steps.build.outputs.version }}
       build: ${{ steps.build.outputs.build }}
+      base_version: ${{ steps.server_gate.outputs.base_version }}
+      server_match: ${{ steps.server_gate.outputs.server_match }}
     steps:
       - uses: actions/checkout@v4
 
@@ -50,6 +52,16 @@ jobs:
           mise //mobile:install:ci
           mise //mobile:codegen
 
+      - name: Check server version
+        id: server_gate
+        if: startsWith(github.ref, 'refs/heads/sync/')
+        run: |
+          base=$(sed -nE 's/^version: *([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' mobile/pubspec.yaml)
+          server=$(curl -fsS --max-time 20 https://photos.isosmart.online/api/server/version | jq -r '"\(.major).\(.minor).\(.patch)"')
+          echo "base_version=$base" >> "$GITHUB_OUTPUT"
+          echo "app-base=$base server=$server"
+          if [ "$base" = "$server" ]; then echo "server_match=true" >> "$GITHUB_OUTPUT"; else echo "server_match=false" >> "$GITHUB_OUTPUT"; fi
+
       - name: Decode Keystore
         if: github.event_name != 'pull_request'
         env:
@@ -69,6 +81,8 @@ jobs:
           version=$(sed -nE 's/^version: *([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' pubspec.yaml)
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             version="${GITHUB_REF_NAME#v}"
+          elif [[ "$GITHUB_REF" == refs/heads/sync/* && "${{ steps.server_gate.outputs.server_match }}" == "true" ]]; then
+            version="${version}-iso.${GITHUB_RUN_NUMBER}"
           else
             version="${version}-iso.${GITHUB_RUN_NUMBER}"
           fi
@@ -95,7 +109,7 @@ jobs:
 
   release:
     needs: [build]
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (startsWith(github.ref, 'refs/heads/sync/') && needs.build.outputs.server_match == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -106,11 +120,17 @@ jobs:
         with:
           name: apk
           path: release-apk
-      - name: GitHub Release
+      - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload "$GITHUB_REF_NAME" release-apk/isosmart-photos-*.apk --clobber || gh release create "$GITHUB_REF_NAME" release-apk/isosmart-photos-*.apk --title "Isosmart Photos ${GITHUB_REF_NAME#v}" --generate-notes
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            tag="$GITHUB_REF_NAME"
+          else
+            run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --jq .run_number)
+            tag="v${{ needs.build.outputs.base_version }}-iso.${run}"
+          fi
+          gh release create "$tag" release-apk/isosmart-photos-*.apk --target "$GITHUB_SHA" --title "Isosmart Photos ${tag#v}" --generate-notes
 
   notify:
     needs: [build, release]
@@ -120,7 +140,10 @@ jobs:
       - env:
           TG_TOKEN: ${{ secrets.TG_ALERT_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TG_ALERT_CHAT_ID }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          RELEASE_RESULT: ${{ needs.release.result }}
         run: |
+          text="Isosmart Photos ${GITHUB_REF_NAME}: build ${BUILD_RESULT}, release ${RELEASE_RESULT}"
           curl -s -m 20 "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
-            --data-urlencode "text=Isosmart Photos ${GITHUB_REF_NAME}: build ${{ needs.build.result }}, release ${{ needs.release.result }}" >/dev/null || true
+            --data-urlencode "text=${text}" >/dev/null || true
