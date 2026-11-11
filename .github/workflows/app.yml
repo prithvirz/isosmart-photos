@@ -28,6 +28,16 @@ jobs:
       base_version: ${{ steps.server_gate.outputs.base_version }}
       server_match: ${{ steps.server_gate.outputs.server_match }}
     steps:
+      - name: Telegram started
+        if: startsWith(github.ref, 'refs/heads/sync/') || startsWith(github.ref, 'refs/tags/v')
+        env:
+          TG_TOKEN: ${{ secrets.TG_ALERT_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TG_ALERT_CHAT_ID }}
+        run: |
+          curl -s -m 20 "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "text=Isosmart Photos ${GITHUB_REF_NAME}: build started" >/dev/null || true
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
@@ -143,7 +153,15 @@ jobs:
           BUILD_RESULT: ${{ needs.build.result }}
           RELEASE_RESULT: ${{ needs.release.result }}
         run: |
-          text="Isosmart Photos ${GITHUB_REF_NAME}: build ${BUILD_RESULT}, release ${RELEASE_RESULT}"
+          if [ "$BUILD_RESULT" != success ]; then
+            text="❌ Isosmart Photos ${GITHUB_REF_NAME}: build failed"
+          elif [ "$RELEASE_RESULT" = success ]; then
+            text="✅ Isosmart Photos ${GITHUB_REF_NAME}: build and release finished"
+          elif [ "$RELEASE_RESULT" = skipped ]; then
+            text="✅ Isosmart Photos ${GITHUB_REF_NAME}: test build finished; no release"
+          else
+            text="❌ Isosmart Photos ${GITHUB_REF_NAME}: build passed, release failed"
+          fi
           curl -s -m 20 "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
             --data-urlencode "text=${text}" >/dev/null || true
