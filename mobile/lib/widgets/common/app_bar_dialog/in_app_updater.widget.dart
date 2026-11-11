@@ -32,13 +32,17 @@ class NativeUpdater {
 }
 
 class InAppUpdaterDialog extends StatefulWidget {
-  const InAppUpdaterDialog({super.key});
+  const InAppUpdaterDialog({super.key, this.autoCheck = false});
 
-  static Future<void> show(BuildContext context) {
+  static DateTime? _lastAutoCheck;
+
+  final bool autoCheck;
+
+  static Future<void> show(BuildContext context, {bool autoCheck = false}) {
     return showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (ctx) => const InAppUpdaterDialog(),
+      builder: (ctx) => InAppUpdaterDialog(autoCheck: autoCheck),
     );
   }
 
@@ -74,6 +78,15 @@ class _InAppUpdaterDialogState extends State<InAppUpdaterDialog> {
   }
 
   Future<void> _checkForUpdate() async {
+    if (widget.autoCheck) {
+      final now = DateTime.now();
+      final last = InAppUpdaterDialog._lastAutoCheck;
+      if (last != null && now.difference(last) < const Duration(hours: 6)) {
+        if (mounted) Navigator.of(context).pop();
+        return;
+      }
+      InAppUpdaterDialog._lastAutoCheck = now;
+    }
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version;
@@ -112,6 +125,7 @@ class _InAppUpdaterDialogState extends State<InAppUpdaterDialog> {
           _loading = false;
           _statusMessage = 'You are using the latest version ($currentVersion).';
         });
+        if (widget.autoCheck && mounted) Navigator.of(context).pop();
         return;
       }
 
@@ -126,7 +140,18 @@ class _InAppUpdaterDialogState extends State<InAppUpdaterDialog> {
             ? 'New version available: $tagName\n(Current: $currentVersion)'
             : 'You are using the latest version ($currentVersion).';
       });
+      if (widget.autoCheck && mounted) {
+        if (isNewer) {
+          await _startDownloadAndInstall();
+        } else {
+          Navigator.of(context).pop();
+        }
+      }
     } catch (e) {
+      if (widget.autoCheck) {
+        if (mounted) Navigator.of(context).pop();
+        return;
+      }
       setState(() {
         _loading = false;
         _errorMessage = 'Check failed: $e';
@@ -138,6 +163,14 @@ class _InAppUpdaterDialogState extends State<InAppUpdaterDialog> {
     if (_apkDownloadUrl == null) return;
 
     if (!await NativeUpdater.canInstall()) {
+      if (widget.autoCheck) {
+        setState(() {
+          _loading = false;
+          _errorMessage = null;
+          _statusMessage = 'Update available. Allow installs from Isosmart Photos, then check again.';
+        });
+        return;
+      }
       await NativeUpdater.openInstallSettings();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
