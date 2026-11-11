@@ -38,10 +38,9 @@ jobs:
           if [ "$(printf '%s\n' "$B" "$U" | sort -V | tail -1)" = "$B" ]; then echo "App is up to date."; exit 0; fi
 
           if git ls-remote --exit-code origin "refs/heads/sync/$U" >/dev/null 2>&1; then
-            # already merged earlier; remind once when the server catches up
-            if [ "$S" = "$U" ] && ! git ls-remote --exit-code origin "refs/tags/server-ready-$U" >/dev/null 2>&1; then
-              tg "Isosmart Photos: your server now runs Immich $U. The app build for it is ready (branch sync/$U). Tell the assistant: release it."
-              git tag "server-ready-$U" && git push -q origin "refs/tags/server-ready-$U"
+            if [ "$S" = "$U" ] && ! gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --jq '.[].tag_name' | grep -Eq "^v$U-iso\\."; then
+              gh workflow run app.yml --ref "sync/$U"
+              tg "Isosmart Photos: server runs Immich $U. Building and publishing the matching app automatically; Android will ask before installing it."
             fi
             exit 0
           fi
