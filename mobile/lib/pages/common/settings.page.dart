@@ -112,13 +112,8 @@ class SettingsPage extends StatelessWidget {
 class _MobileLayout extends ConsumerWidget {
   const _MobileLayout();
   @override
-<<<<<<< HEAD
-  Widget build(BuildContext context) {
-    final List<Widget> settings = _userSections
-=======
   Widget build(BuildContext context, WidgetRef ref) {
-    final List<Widget> settings = SettingSection.visible(ref)
->>>>>>> upstream-v3.4.0
+    final List<Widget> settings = _userSections
         .expand(
           (setting) => setting == SettingSection.beta
               ? [
@@ -146,13 +141,8 @@ class _MobileLayout extends ConsumerWidget {
 class _TabletLayout extends HookConsumerWidget {
   const _TabletLayout();
   @override
-<<<<<<< HEAD
-  Widget build(BuildContext context) {
-    final selectedSection = useState<SettingSection>(_userSections.first);
-=======
   Widget build(BuildContext context, WidgetRef ref) {
-    final selectedSection = useState<SettingSection>(SettingSection.values.first);
->>>>>>> upstream-v3.4.0
+    final selectedSection = useState<SettingSection>(_userSections.first);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.start,
@@ -161,11 +151,7 @@ class _TabletLayout extends HookConsumerWidget {
           flex: 2,
           child: CustomScrollView(
             slivers: [
-<<<<<<< HEAD
               ..._userSections.map(
-=======
-              ...SettingSection.visible(ref).map(
->>>>>>> upstream-v3.4.0
                 (s) => SliverToBoxAdapter(
                   child: ListTile(
                     title: Text(s.title(context.t)),

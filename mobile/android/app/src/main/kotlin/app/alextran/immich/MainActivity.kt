@@ -47,7 +47,6 @@ class MainActivity : FlutterFragmentActivity() {
     super.configureFlutterEngine(flutterEngine)
     registerPlugins(this, flutterEngine)
     flutterEngine.plugins.add(PasskeyPlugin())
-<<<<<<< HEAD
 
     updateChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "online.isosmart.photos/native")
     updateChannel.setMethodCallHandler { call, result ->
