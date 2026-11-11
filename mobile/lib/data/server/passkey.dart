@@ -35,7 +35,7 @@ class PasskeyApiRepository extends ApiRepository {
 
   /// Log in with the WebAuthn [credential] signed with the [startAuthentication] options
   Future<LoginResponse> finishAuthentication(Map<String, dynamic> credential) async {
-    final dto = PasskeyAuthenticationFinishDto(response: credential);
+    final dto = PasskeyAuthenticationFinishDto(response: Map<String, Object>.from(credential));
     return LoginResponse.fromDto(await checkNull(_api.finishAuthentication(dto)));
   }
 

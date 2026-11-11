@@ -123,15 +123,15 @@ extension on AssetEdit {
     return switch (this) {
       CropEdit(:final parameters) => AssetEditActionItemDto(
         action: AssetEditAction.crop,
-        parameters: parameters.toJson(),
+        parameters: Map<String, Object>.from(parameters.toJson()),
       ),
       RotateEdit(:final parameters) => AssetEditActionItemDto(
         action: AssetEditAction.rotate,
-        parameters: parameters.toJson(),
+        parameters: Map<String, Object>.from(parameters.toJson()),
       ),
       MirrorEdit(:final parameters) => AssetEditActionItemDto(
         action: AssetEditAction.mirror,
-        parameters: parameters.toJson(),
+        parameters: Map<String, Object>.from(parameters.toJson()),
       ),
     };
   }
