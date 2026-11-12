@@ -13,4 +13,3 @@ Upstream Immich: `https://github.com/immich-app/immich` (pinned base: `v3.3.6`).
   - Release cert SHA-256: `bf1e1ddab512246b20e353462c27302e30b3e8c5155d9f28c92420652cc2c629`.
 - Version scheme: `major.minor.patch-iso.build` (e.g. `3.3.6-iso.1`).
 - Server gate: Sync job checks `https://photos.isosmart.online/api/server/version`. Never release app version ahead of server.
-- Story cards (`✨`): read-only album display. Never mutate or generate from app.
