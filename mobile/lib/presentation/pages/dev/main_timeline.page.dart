@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:immich_mobile/presentation/widgets/feature_message/feature_message_dialog.widget.dart';
 import 'package:immich_mobile/presentation/widgets/memory/memory_lane.widget.dart';
-import 'package:immich_mobile/presentation/widgets/stories/stories_row.widget.dart';
 import 'package:immich_mobile/presentation/widgets/timeline/timeline.widget.dart';
 import 'package:immich_mobile/providers/feature_message.provider.dart';
 import 'package:immich_mobile/providers/infrastructure/memory.provider.dart';
@@ -41,18 +40,9 @@ class _MainTimelinePageState extends ConsumerState<MainTimelinePage> {
   @override
   Widget build(BuildContext context) {
     final hasMemories = ref.watch(memoryLaneProvider.select((state) => state.value?.isNotEmpty ?? false));
-    final hasStories = ref.watch(storyAlbumsProvider.select((a) => a.isNotEmpty));
     return Timeline(
-      topSliverWidget: SliverToBoxAdapter(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            StoriesRow(),
-            MemoryLane(),
-          ],
-        ),
-      ),
-      topSliverWidgetHeight: (hasStories ? 198 : 0) + (hasMemories ? 200 : 0),
+      topSliverWidget: const SliverToBoxAdapter(child: MemoryLane()),
+      topSliverWidgetHeight: hasMemories ? 200 : 0,
       showStorageIndicator: true,
     );
   }
